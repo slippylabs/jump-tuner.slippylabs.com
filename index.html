@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jump &amp; Gravity Tuner // jump-tuner.slippylabs.com</title>
+<meta name="description" content="Say how high and how long the jump should be; get the gravity and velocity to put in your engine — corrected for the timestep your game actually runs at, with a playable preview. Runs entirely in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jump-tuner.slippylabs.com/">
+<meta property="og:title" content="Jump &amp; Gravity Tuner // jump-tuner.slippylabs.com">
+<meta property="og:description" content="Say how high and how long the jump should be; get the gravity and velocity to put in your engine — corrected for the timestep your game actually runs at, with a playable preview. Runs entirely in your browser.">
+<meta property="og:image" content="https://jump-tuner.slippylabs.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Jump &amp; Gravity Tuner // jump-tuner.slippylabs.com">
+<meta name="twitter:description" content="Say how high and how long the jump should be; get the gravity and velocity to put in your engine — corrected for the timestep your game actually runs at, with a playable preview. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://jump-tuner.slippylabs.com/og-image.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234%22%20r%3D%2222%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2244%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3C%2Fsvg%3E">
+<meta name="theme-color" content="#050b10">
+<link rel="stylesheet" href="style.css?v=1">
+<script>/* perf-lite: drop blend/blur effects on low-power devices. ?fx=lite or ?fx=full to override (persisted). */
+(function(){try{var k="slippy-fx",m=location.search.match(/[?&]fx=(lite|full)/),v=m?m[1]:localStorage.getItem(k);if(m)localStorage.setItem(k,v);if(v==="lite"||(v!=="full"&&(navigator.hardwareConcurrency||8)<=2))document.documentElement.classList.add("perf-lite");}catch(e){}})();</script>
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="scanlines"></div>
+
+<main class="page-wrap">
+  <div class="hud-panel wide">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+
+    <div class="callsign-row">
+      <div class="toad-avatar-wrap">
+        <svg class="toad-avatar" width="46" height="46" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <div class="lock-reticle"></div>
+      </div>
+      <span class="callsign">Workshop Division // Tool</span>
+      <div class="nav-links">
+        <a href="https://projects.slippylabs.com/" class="logout-link">← Archive</a>
+      </div>
+    </div>
+
+
+    <h1>JUMP &amp; GRAVITY TUNER</h1>
+    <p class="subtitle">Every platformer is four numbers in a trench coat. Pick the jump you want in metres and seconds, and this works backwards to the gravity, the launch velocity and the fall curve — then proves it by running your loop at your timestep and measuring what the character really does.</p>
+
+    <div class="two-col jt-top">
+      <div>
+        <h2 class="jt-h2">The jump you want</h2>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="height-input">Jump height (<span class="jt-unit">m</span>)</label>
+          <input class="tool-number-input" id="height-input" type="number" value="3" min="0.05" step="0.1">
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="apex-input">Time to apex (s)</label>
+          <input class="tool-number-input" id="apex-input" type="number" value="0.4" min="0.02" step="0.01">
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="fall-input">Fall gravity multiplier</label>
+          <div class="tool-slider-row">
+            <input type="range" id="fall-input" min="1" max="4" step="0.05" value="1.8">
+            <span class="jt-slider-value" id="fall-value">1.80&times;</span>
+          </div>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="speed-input">Run speed (<span class="jt-unit">m</span>/s)</label>
+          <input class="tool-number-input" id="speed-input" type="number" value="8" min="0" step="0.5">
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="cut-input">Release cut &mdash; velocity kept when the button is let go</label>
+          <div class="tool-slider-row">
+            <input type="range" id="cut-input" min="0" max="1" step="0.05" value="0.45">
+            <span class="jt-slider-value" id="cut-value">0.45</span>
+          </div>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="term-input">Terminal velocity (<span class="jt-unit">m</span>/s, 0 = none)</label>
+          <input class="tool-number-input" id="term-input" type="number" value="25" min="0" step="1">
+        </div>
+      </div>
+
+      <div>
+        <h2 class="jt-h2">The loop you run</h2>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="rate-select">Fixed timestep</label>
+          <select class="tool-select" id="rate-select">
+            <option value="60" selected>60 Hz &mdash; dt = 1/60 s</option>
+            <option value="50">50 Hz &mdash; Unity default (0.02 s)</option>
+            <option value="30">30 Hz</option>
+            <option value="120">120 Hz</option>
+            <option value="144">144 Hz</option>
+            <option value="0">Continuous &mdash; no correction</option>
+          </select>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="order-select">Integration order</label>
+          <select class="tool-select" id="order-select">
+            <option value="velocity" selected>v += g&middot;dt, then y += v&middot;dt (semi-implicit)</option>
+            <option value="position">y += v&middot;dt, then v += g&middot;dt (explicit)</option>
+          </select>
+        </div>
+        <p class="tool-note">Nearly every engine does the first. Unity's Rigidbody2D, Godot's <code>move_and_slide</code> pattern and most hand-written loops all integrate velocity before position &mdash; which makes the jump land <em>short</em> of the textbook height by half a frame of velocity.</p>
+
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="unit-select">Units</label>
+          <select class="tool-select" id="unit-select">
+            <option value="m" selected>metres</option>
+            <option value="px">pixels</option>
+          </select>
+        </div>
+        <div class="tool-field-row" id="ppu-row" hidden>
+          <label class="tool-field-label" for="ppu-input">Pixels per metre (for the Unity gravity scale)</label>
+          <input class="tool-number-input" id="ppu-input" type="number" value="100" min="1" step="1">
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="coyote-input">Coyote time (ms)</label>
+          <input class="tool-number-input" id="coyote-input" type="number" value="100" min="0" step="10">
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="buffer-input">Jump buffer (ms)</label>
+          <input class="tool-number-input" id="buffer-input" type="number" value="120" min="0" step="10">
+        </div>
+      </div>
+    </div>
+
+    <p class="tool-note jt-warn hidden" id="warn-msg" role="alert"></p>
+
+    <h2 class="jt-h2">Numbers for your engine</h2>
+    <div class="net-grid">
+      <div class="net-tile"><div class="net-tile-label">Jump velocity</div><div class="net-tile-value" id="out-v0">&mdash;</div></div>
+      <div class="net-tile"><div class="net-tile-label">Rise gravity</div><div class="net-tile-value" id="out-grise">&mdash;</div></div>
+      <div class="net-tile"><div class="net-tile-label">Fall gravity</div><div class="net-tile-value" id="out-gfall">&mdash;</div></div>
+      <div class="net-tile"><div class="net-tile-label">Airtime</div><div class="net-tile-value" id="out-air">&mdash;</div></div>
+      <div class="net-tile"><div class="net-tile-label">Jump distance</div><div class="net-tile-value" id="out-dist">&mdash;</div></div>
+      <div class="net-tile"><div class="net-tile-label">Shortest hop</div><div class="net-tile-value" id="out-min">&mdash;</div></div>
+      <div class="net-tile"><div class="net-tile-label">Coyote / buffer</div><div class="net-tile-value" id="out-frames">&mdash;</div></div>
+      <div class="net-tile"><div class="net-tile-label">Terminal velocity</div><div class="net-tile-value" id="out-term">&mdash;</div></div>
+    </div>
+
+    <h2 class="jt-h2">What your loop actually does</h2>
+    <div class="net-table-wrap">
+      <table class="net-table" id="proof-table">
+        <thead><tr><th>Gravity used</th><th>Apex reached</th><th>Error</th><th>Time to apex</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="tool-note" id="proof-note"></p>
+
+    <h2 class="jt-h2">Trajectory</h2>
+    <div class="jt-canvas-wrap">
+      <canvas id="arc" width="900" height="340"></canvas>
+    </div>
+    <p class="tool-note">Solid line: the corrected jump, stepped at your timestep. Dashed: the textbook gravity run through the same loop &mdash; the gap between them is what the correction buys. The dotted rule is the height you asked for.</p>
+
+    <h2 class="jt-h2">Play it</h2>
+    <div class="jt-play-wrap">
+      <canvas id="play" width="900" height="300" tabindex="0"
+              aria-label="Playable jump preview. Arrow keys or A and D to run, space or up to jump."></canvas>
+    </div>
+    <div class="tool-controls">
+      <button class="tool-btn" id="jump-btn">Jump</button>
+      <button class="tool-btn ghost" id="left-btn" aria-label="Run left">&larr; Run</button>
+      <button class="tool-btn ghost" id="right-btn" aria-label="Run right">Run &rarr;</button>
+      <button class="tool-btn ghost" id="trail-btn" aria-pressed="true">Trail: on</button>
+    </div>
+    <p class="tool-note">Click the strip, then arrows or A/D to run and space to jump. Tap and hold Jump for a full jump, a quick tap for the short hop. The ledge on the right is exactly the jump distance above &mdash; if the numbers are right you clear it with nothing to spare.</p>
+
+    <h2 class="jt-h2">Export</h2>
+    <div class="tool-field-row">
+      <label class="tool-field-label" for="engine-select">Engine</label>
+      <select class="tool-select" id="engine-select">
+        <option value="unity">Unity / C#</option>
+        <option value="godot">Godot 4 / GDScript</option>
+        <option value="js">JavaScript</option>
+        <option value="gamemaker">GameMaker / GML</option>
+      </select>
+    </div>
+    <pre class="tool-output jt-code" id="code-out"></pre>
+    <div class="tool-controls">
+      <button class="tool-btn" id="copy-btn">Copy Code</button>
+    </div>
+    <div class="copy-toast" id="toast">Copied</div>
+    <div class="comm-window">
+      <div class="comm-portrait">
+        <svg width="36" height="36" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="comm-body">
+        <div class="comm-label"><span class="dot"></span> Incoming Transmission &mdash; Slippy</div>
+        <p>&quot;The textbook gravity is wrong by half a frame of velocity. At 60Hz that is twelve centimetres of jump.&quot;</p>
+      </div>
+    </div>
+
+    <a href="https://projects.slippylabs.com/" class="hud-btn">← Back to Archive</a>
+  </div>
+</main>
+
+
+<script>
+/* ---- Jump maths -------------------------------------------------------------
+   The continuous solution is the one every tutorial gives:
+
+       g  = 2h / ta^2          v0 = 2h / ta
+
+   and it is wrong for your game, because your game does not integrate
+   continuously. It takes fixed steps, and a fixed-step integrator has a
+   specific, knowable error.
+
+   Take the usual order -- velocity first, then position:
+
+       v += g*dt ;  y += v*dt
+
+   After n steps  y_n = n*dt*v0 - g*dt^2*n(n+1)/2, against the continuous
+   y(t) = v0*t - g*t^2/2 at t = n*dt. Subtract, and the discrete curve sits
+   exactly  g*dt^2*n/2 = (g*dt/2)*t  BELOW the real parabola. At the apex, where
+   v0 = g*ta, that shortfall is  v0*dt/2 -- half a frame of launch velocity,
+   independent of how small h is.
+
+   So the apex a velocity-first loop actually reaches is
+
+       H = v0^2/(2g) - v0*dt/2 = v0*(ta - dt)/2,
+
+   and asking for H = h gives the corrected pair
+
+       v0 = 2h / (ta - dt)     g = v0 / ta = 2h / (ta*(ta - dt)).
+
+   One ta becomes (ta - dt). That is the entire correction, it is exact, and it
+   is what this page hands you. The position-first order errs the other way, so
+   there it is (ta + dt). */
+
+const ORDER_SIGN = { velocity: -1, position: +1 };
+
+/* The exact peak of a stepped rise from (y0, v) under gravity g.
+
+   A rise only stops at a step boundary, so the peak is the maximum over WHOLE
+   steps, not the continuous vertex of the parabola. Velocity-first gives
+   y_k = y0 + k*dt*v - g*dt^2*k(k+1)/2, climbing while v_k > 0, i.e. up to
+   k = floor(v / (g*dt)); position-first shifts both by one step. Round v/(g*dt)
+   to a whole number and the tidy v^2/2g - v*dt/2 form comes back out, which is
+   why the tuned jump above can use it -- but a jump cut halfway up lands
+   anywhere, and there the floor is the difference. */
+function risePeak(y0, v, g, dt, order) {
+  if (!(v > 0)) return y0;
+  if (!(dt > 0)) return y0 + (v * v) / (2 * g);
+  const n = Math.floor(v / (g * dt));
+  const k = order === 'position' ? n + 1 : n;
+  return y0 + k * dt * v - (g * dt * dt * k * (k + (order === 'position' ? -1 : 1))) / 2;
+}
+
+function solveJump(opts) {
+  const height = Math.max(1e-6, opts.height);
+  const apexTime = Math.max(1e-6, opts.apexTime);
+  const dt = Math.max(0, opts.dt || 0);
+  const order = opts.order === 'position' ? 'position' : 'velocity';
+  /* sign is -1 for velocity-first (undershoots, so shorten the effective ta),
+     +1 for position-first (overshoots, so lengthen it). */
+  const effective = apexTime + ORDER_SIGN[order] * dt;
+  const usable = effective > 1e-6;
+  const v0 = usable ? (2 * height) / effective : (2 * height) / apexTime;
+  const gRise = v0 / apexTime;
+  const fallMultiplier = Math.max(1, opts.fallMultiplier || 1);
+  const gFall = gRise * fallMultiplier;
+  const cut = Math.min(1, Math.max(0, opts.cut === undefined ? 1 : opts.cut));
+  const terminal = Math.max(0, opts.terminal || 0);
+  const runSpeed = Math.max(0, opts.runSpeed || 0);
+
+  /* Falling is a separate parabola with its own gravity, so the fall time is
+     not the rise time -- that asymmetry is most of what "good game feel" is.
+
+     And it is stepped, like everything else here. Dropping from h with a
+     velocity-first loop gives y_n = h - g*dt^2*n(n+1)/2, i.e. the continuous
+     parabola with an extra g*t*dt/2 of fall, so the ground arrives EARLY:
+
+         t^2 + t*dt - 2h/g = 0   ->   t = (-dt + sqrt(dt^2 + 8h/g)) / 2
+
+     Position-first picks up the opposite sign. With dt = 0 both collapse to the
+     textbook sqrt(2h/g), so one expression covers the continuous case too. */
+  const fallSign = ORDER_SIGN[order];
+  const fallTime = (fallSign * dt + Math.sqrt(dt * dt + (8 * height) / gFall)) / 2;
+  const airtime = apexTime + fallTime;
+
+  /* A tapped jump: the button is released as early as a loop can notice, which
+     is after one step -- not at t = 0. So the character has already travelled a
+     step at full speed before the cut lands, and the naive (v0*cut)^2/2g
+     understates the shortest hop by that whole step. What actually happens:
+
+        step 1:  v1 = v0 - g*dt,  y1 = v1*dt      (still holding)
+        step 2:  the cut applies, vc = v1*cut, and from (y1, vc) it is simply
+                 another stepped jump, so it climbs vc^2/2g - vc*dt/2 more. */
+  /* Both orders have already applied one step of gravity by the time the cut
+     lands -- only the height moved in that step differs, because position-first
+     moves at v0 and velocity-first moves at v0 - g*dt. */
+  const v1 = v0 - gRise * dt;
+  const y1 = (order === 'position' ? v0 : v1) * dt;
+  const cutV = v1 * cut;
+  const minHeight = risePeak(y1, cutV, gRise, dt, order);
+
+  return {
+    height, apexTime, dt, order, v0, gRise, gFall, fallMultiplier, cut, terminal,
+    runSpeed, fallTime, airtime, minHeight,
+    jumpDistance: runSpeed * airtime,
+    naive: { v0: (2 * height) / apexTime, gRise: (2 * height) / (apexTime * apexTime) },
+    usable,
+  };
+}
+
+/* ---- The loop, exactly as a game would write it -----------------------------
+   This is the arbiter. Every claim the page makes about a number is settled by
+   running this and measuring, not by trusting the algebra above. */
+function simulateJump(params, options = {}) {
+  const dt = options.dt || params.dt || 1 / 60;
+  const order = options.order || params.order;
+  const v0 = options.v0 === undefined ? params.v0 : options.v0;
+  const gRise = options.gRise === undefined ? params.gRise : options.gRise;
+  const gFall = options.gFall === undefined ? params.gFall : options.gFall;
+  const terminal = options.terminal === undefined ? params.terminal : options.terminal;
+  const holdSteps = options.holdSteps === undefined ? Infinity : options.holdSteps;
+  const cut = options.cut === undefined ? params.cut : options.cut;
+  const maxSteps = options.maxSteps || 4000;
+
+  let y = 0;
+  let v = v0;
+  let t = 0;
+  let apex = 0;
+  let apexTime = 0;
+  let apexCrossing = 0;
+  let released = false;
+  const trace = [{ t: 0, y: 0, v }];
+
+  for (let n = 1; n <= maxSteps; n++) {
+    if (!released && n > holdSteps) {
+      released = true;
+      if (v > 0) v *= cut;   /* only cuts the rise; cutting a fall is a teleport */
+    }
+    const g = v > 0 ? gRise : gFall;
+    if (order === 'position') {
+      y += v * dt;
+      v -= g * dt;
+    } else {
+      v -= g * dt;
+      y += v * dt;
+    }
+    if (terminal > 0 && v < -terminal) v = -terminal;
+    t = n * dt;
+    if (y > apex) { apex = y; apexTime = t; }
+    /* Where the velocity crosses zero, interpolated. At the tuned values v
+       lands on exactly 0 at the apex step, so which side of it the float noise
+       falls on decides whether "time to apex" reads ta - dt or ta + dt. The
+       crossing is the same number either way, so that is what gets reported. */
+    if (apexCrossing === 0 && v <= 0) {
+      const prev = trace[trace.length - 1].v;
+      apexCrossing = prev === v ? t : t - dt + dt * (prev / (prev - v));
+    }
+    trace.push({ t, y, v });
+    if (y <= 0 && n > 1) break;
+  }
+  /* Landing is between steps; a game resolves it by clamping to the floor, so
+     the reported airtime does the same interpolation the game would. */
+  const last = trace[trace.length - 1];
+  const prev = trace[trace.length - 2] || last;
+  let landTime = last.t;
+  if (last.y < 0 && prev.y > 0) {
+    const frac = prev.y / (prev.y - last.y);
+    landTime = prev.t + frac * dt;
+  }
+  return { trace, apex, apexTime, apexCrossing, landTime };
+}
+
+/* ---- Engine exports --------------------------------------------------------- */
+
+function n3(x) { return Number.isFinite(x) ? x.toFixed(3) : '0'; }
+
+function engineCode(engine, p, extras) {
+  const coyote = extras.coyote / 1000;
+  const buffer = extras.buffer / 1000;
+  const hz = p.dt > 0 ? Math.round(1 / p.dt) : 0;
+  const stepNote = p.dt > 0
+    ? `// Corrected for a ${hz} Hz fixed step (${p.order === 'velocity' ? 'velocity-first' : 'position-first'}).
+// The uncorrected textbook values would reach ${n3(extras.naiveApex)} instead of ${n3(p.height)}.`
+    : '// Continuous solution -- no timestep correction applied.';
+  if (engine === 'unity') {
+    return `${stepNote}
+// Physics2D.gravity.y must be -${n3(p.gRise)} with gravityScale 1, or set
+// gravityScale = ${n3(p.gRise / 9.81)} against the default -9.81.
+public class JumpTuning : MonoBehaviour
+{
+    public const float JumpVelocity   = ${n3(p.v0)}f;
+    public const float RiseGravity    = ${n3(p.gRise)}f;
+    public const float FallGravity    = ${n3(p.gFall)}f;   // ${n3(p.fallMultiplier)}x
+    public const float TerminalSpeed  = ${n3(p.terminal)}f;
+    public const float RunSpeed       = ${n3(p.runSpeed)}f;
+    public const float ReleaseCut     = ${n3(p.cut)}f;
+    public const float CoyoteTime     = ${n3(coyote)}f;
+    public const float JumpBuffer     = ${n3(buffer)}f;
+
+    Rigidbody2D body;
+    float coyoteLeft, bufferLeft;
+    bool grounded;
+
+    void FixedUpdate()
+    {
+        coyoteLeft = grounded ? CoyoteTime : coyoteLeft - Time.fixedDeltaTime;
+        bufferLeft -= Time.fixedDeltaTime;
+
+        float g = body.linearVelocity.y > 0f ? RiseGravity : FallGravity;
+        Vector2 v = body.linearVelocity;
+        v.y -= g * Time.fixedDeltaTime;                       // velocity first,
+        if (TerminalSpeed > 0f) v.y = Mathf.Max(v.y, -TerminalSpeed);
+
+        if (bufferLeft > 0f && coyoteLeft > 0f)
+        {
+            v.y = JumpVelocity;                               // then position,
+            bufferLeft = coyoteLeft = 0f;                     // which Unity does for you
+        }
+        body.linearVelocity = v;
+    }
+
+    // Call on the frame the jump button goes down / comes up.
+    public void JumpPressed()  { bufferLeft = JumpBuffer; }
+    public void JumpReleased()
+    {
+        if (body.linearVelocity.y > 0f)
+            body.linearVelocity = new Vector2(body.linearVelocity.x, body.linearVelocity.y * ReleaseCut);
+    }
+}`;
+  }
+  if (engine === 'godot') {
+    return `${stepNote.replace(/^\/\//gm, '#')}
+extends CharacterBody2D
+
+const JUMP_VELOCITY  := ${n3(p.v0)}
+const RISE_GRAVITY   := ${n3(p.gRise)}
+const FALL_GRAVITY   := ${n3(p.gFall)}   # ${n3(p.fallMultiplier)}x
+const TERMINAL_SPEED := ${n3(p.terminal)}
+const RUN_SPEED      := ${n3(p.runSpeed)}
+const RELEASE_CUT    := ${n3(p.cut)}
+const COYOTE_TIME    := ${n3(coyote)}
+const JUMP_BUFFER    := ${n3(buffer)}
+
+var _coyote := 0.0
+var _buffer := 0.0
+
+func _physics_process(delta: float) -> void:
+\t_coyote = COYOTE_TIME if is_on_floor() else _coyote - delta
+\t_buffer -= delta
+\tif Input.is_action_just_pressed("jump"):
+\t\t_buffer = JUMP_BUFFER
+\tif Input.is_action_just_released("jump") and velocity.y < 0.0:
+\t\tvelocity.y *= RELEASE_CUT
+
+\tvar g := RISE_GRAVITY if velocity.y < 0.0 else FALL_GRAVITY
+\tvelocity.y += g * delta          # Godot's y grows downward, so gravity adds
+\tif TERMINAL_SPEED > 0.0:
+\t\tvelocity.y = min(velocity.y, TERMINAL_SPEED)
+
+\tif _buffer > 0.0 and _coyote > 0.0:
+\t\tvelocity.y = -JUMP_VELOCITY
+\t\t_buffer = 0.0
+\t\t_coyote = 0.0
+
+\tvelocity.x = Input.get_axis("left", "right") * RUN_SPEED
+\tmove_and_slide()`;
+  }
+  if (engine === 'gamemaker') {
+    return `${stepNote}
+// Step event. GameMaker's y also grows downward.
+#macro JUMP_VELOCITY  ${n3(p.v0 * (p.dt > 0 ? p.dt : 1 / 60))}   // per step, not per second
+#macro RISE_GRAVITY   ${n3(p.gRise * (p.dt > 0 ? p.dt * p.dt : 1 / 3600))}
+#macro FALL_GRAVITY   ${n3(p.gFall * (p.dt > 0 ? p.dt * p.dt : 1 / 3600))}
+#macro TERMINAL_SPEED ${n3(p.terminal * (p.dt > 0 ? p.dt : 1 / 60))}
+#macro RUN_SPEED      ${n3(p.runSpeed * (p.dt > 0 ? p.dt : 1 / 60))}
+#macro RELEASE_CUT    ${n3(p.cut)}
+
+var _g = (vsp < 0) ? RISE_GRAVITY : FALL_GRAVITY;
+vsp += _g;
+if (TERMINAL_SPEED > 0) vsp = min(vsp, TERMINAL_SPEED);
+if (jump_pressed && grounded) vsp = -JUMP_VELOCITY;
+if (jump_released && vsp < 0) vsp *= RELEASE_CUT;
+hsp = (keyboard_check(vk_right) - keyboard_check(vk_left)) * RUN_SPEED;`;
+  }
+  return `${stepNote}
+const JUMP = {
+  velocity: ${n3(p.v0)},
+  riseGravity: ${n3(p.gRise)},
+  fallGravity: ${n3(p.gFall)},   // ${n3(p.fallMultiplier)}x
+  terminal: ${n3(p.terminal)},
+  runSpeed: ${n3(p.runSpeed)},
+  releaseCut: ${n3(p.cut)},
+  coyote: ${n3(coyote)},
+  buffer: ${n3(buffer)},
+};
+
+// Fixed step. Call at exactly ${hz || 60} Hz -- these numbers are tuned to it.
+function stepPlayer(p, input, dt) {
+  p.coyote = p.grounded ? JUMP.coyote : p.coyote - dt;
+  p.buffer = input.jumpPressed ? JUMP.buffer : p.buffer - dt;
+
+  const g = p.vy > 0 ? JUMP.riseGravity : JUMP.fallGravity;
+  p.vy -= g * dt;                                   // velocity first
+  if (JUMP.terminal > 0) p.vy = Math.max(p.vy, -JUMP.terminal);
+
+  if (p.buffer > 0 && p.coyote > 0) {
+    p.vy = JUMP.velocity;
+    p.buffer = p.coyote = 0;
+  }
+  if (input.jumpReleased && p.vy > 0) p.vy *= JUMP.releaseCut;
+
+  p.vx = input.axis * JUMP.runSpeed;
+  p.x += p.vx * dt;                                 // then position
+  p.y += p.vy * dt;
+}`;
+}
+
+/* ==== UI ==== */
+
+const $ = (id) => document.getElementById(id);
+
+const state = {
+  height: 3, apexTime: 0.4, fallMultiplier: 1.8, runSpeed: 8, cut: 0.45,
+  terminal: 25, hz: 60, order: 'velocity', unit: 'm', ppu: 100,
+  coyote: 100, buffer: 120, trail: true,
+};
+
+function readState() {
+  state.height = Math.max(0.01, Number($('height-input').value) || 0.01);
+  state.apexTime = Math.max(0.02, Number($('apex-input').value) || 0.02);
+  state.fallMultiplier = Number($('fall-input').value);
+  state.runSpeed = Math.max(0, Number($('speed-input').value) || 0);
+  state.cut = Number($('cut-input').value);
+  state.terminal = Math.max(0, Number($('term-input').value) || 0);
+  state.hz = Number($('rate-select').value);
+  state.order = $('order-select').value;
+  state.unit = $('unit-select').value;
+  state.ppu = Math.max(1, Number($('ppu-input').value) || 100);
+  state.coyote = Math.max(0, Number($('coyote-input').value) || 0);
+  state.buffer = Math.max(0, Number($('buffer-input').value) || 0);
+}
+
+function params() {
+  return solveJump({
+    height: state.height,
+    apexTime: state.apexTime,
+    dt: state.hz > 0 ? 1 / state.hz : 0,
+    order: state.order,
+    fallMultiplier: state.fallMultiplier,
+    runSpeed: state.runSpeed,
+    cut: state.cut,
+    terminal: state.terminal,
+  });
+}
+
+const U = () => (state.unit === 'px' ? 'px' : 'm');
+
+function refreshOutputs(p) {
+  $('out-v0').textContent = `${p.v0.toFixed(2)} ${U()}/s`;
+  $('out-grise').textContent = `${p.gRise.toFixed(1)} ${U()}/s²`;
+  $('out-gfall').textContent = `${p.gFall.toFixed(1)} ${U()}/s²`;
+  $('out-air').textContent = `${p.airtime.toFixed(3)} s`;
+  $('out-dist').textContent = `${p.jumpDistance.toFixed(2)} ${U()}`;
+  $('out-min').textContent = `${p.minHeight.toFixed(2)} ${U()}`;
+  const dt = p.dt > 0 ? p.dt : 1 / 60;
+  $('out-frames').textContent = `${Math.round(state.coyote / 1000 / dt)} / ${Math.round(state.buffer / 1000 / dt)} frames`;
+  $('out-term').textContent = p.terminal > 0 ? `${p.terminal.toFixed(1)} ${U()}/s` : 'none';
+}
+
+/* The proof table: run the loop three ways and print what came out. */
+function refreshProof(p) {
+  const body = $('proof-table').querySelector('tbody');
+  body.textContent = '';
+  const dt = p.dt > 0 ? p.dt : 1 / 600;
+  const rows = [
+    { label: `Corrected (this page)`, v0: p.v0, g: p.gRise },
+    { label: `Textbook 2h/t²`, v0: p.naive.v0, g: p.naive.gRise },
+  ];
+  let corrected = null;
+  for (const row of rows) {
+    const sim = simulateJump(p, { dt, v0: row.v0, gRise: row.g, gFall: row.g * p.fallMultiplier, holdSteps: Infinity });
+    if (corrected === null) corrected = sim;
+    const err = sim.apex - p.height;
+    const tr = document.createElement('tr');
+    for (const text of [
+      row.label,
+      `${sim.apex.toFixed(4)} ${U()}`,
+      `${err >= 0 ? '+' : ''}${(err * 100).toFixed(2)} c${U()}`,
+      `${sim.apexCrossing.toFixed(4)} s`,
+    ]) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      tr.appendChild(td);
+    }
+    if (Math.abs(err) > 1e-6) tr.classList.add('jt-row-bad');
+    body.appendChild(tr);
+  }
+  const naiveSim = simulateJump(p, { dt, v0: p.naive.v0, gRise: p.naive.gRise, gFall: p.naive.gRise * p.fallMultiplier });
+  const shortfall = p.height - naiveSim.apex;
+  $('proof-note').textContent = p.dt > 0
+    ? `Stepped at ${state.hz} Hz, ${state.order === 'velocity' ? 'velocity first' : 'position first'}: the textbook numbers ${shortfall > 0 ? 'fall short by' : 'overshoot by'} ${Math.abs(shortfall * 100).toFixed(2)} c${U()} — half a frame of launch velocity, which is ${(Math.abs(shortfall) / p.height * 100).toFixed(1)}% of the jump. The corrected numbers land on the target.`
+    : 'No fixed step selected, so there is nothing to correct — these are the continuous values, and a real loop will not reproduce them exactly.';
+  return { corrected, naiveSim };
+}
+
+/* ---- trajectory plot ---- */
+
+function drawArc(p, sims) {
+  const cv = $('arc');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = '#04070a';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+
+  const dt = p.dt > 0 ? p.dt : 1 / 600;
+  const full = simulateJump(p, { dt });
+  const naive = simulateJump(p, { dt, v0: p.naive.v0, gRise: p.naive.gRise, gFall: p.naive.gRise * p.fallMultiplier });
+  const tapped = simulateJump(p, { dt, holdSteps: 1 });
+  void sims;
+
+  const maxT = Math.max(full.landTime, naive.landTime, 0.1);
+  const maxY = Math.max(p.height, full.apex, naive.apex) * 1.18;
+  const pad = { l: 46, r: 14, t: 16, b: 30 };
+  const W = cv.width - pad.l - pad.r;
+  const H = cv.height - pad.t - pad.b;
+  const X = (t) => pad.l + (t / maxT) * W;
+  const Y = (y) => pad.t + H - (y / maxY) * H;
+
+  ctx.strokeStyle = 'rgba(57,255,143,0.12)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 8; i++) {
+    const y = pad.t + (i / 8) * H;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + W, y); ctx.stroke();
+  }
+  /* ground */
+  ctx.strokeStyle = 'rgba(57,255,143,0.5)';
+  ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(pad.l + W, Y(0)); ctx.stroke();
+
+  /* the height that was asked for */
+  ctx.strokeStyle = 'rgba(255,145,48,0.85)';
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.l, Y(p.height)); ctx.lineTo(pad.l + W, Y(p.height)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,145,48,0.95)';
+  ctx.font = '11px Consolas, monospace';
+  ctx.fillText(`target ${p.height.toFixed(2)}`, pad.l + 4, Y(p.height) - 5);
+
+  function plot(trace, stroke, dash, width) {
+    ctx.strokeStyle = stroke;
+    ctx.setLineDash(dash);
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    trace.forEach((pt, i) => {
+      const x = X(pt.t);
+      const y = Y(Math.max(0, pt.y));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  plot(naive.trace, 'rgba(255,70,85,0.8)', [5, 4], 1.5);
+  plot(tapped.trace, 'rgba(108,200,255,0.75)', [2, 3], 1.5);
+  plot(full.trace, '#39ff8f', [], 2);
+
+  /* one dot per simulated step, so the discreteness is visible */
+  if (p.dt > 0 && full.trace.length < 200) {
+    ctx.fillStyle = '#39ff8f';
+    for (const pt of full.trace) {
+      if (pt.y < 0) continue;
+      ctx.beginPath(); ctx.arc(X(pt.t), Y(pt.y), 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  ctx.fillStyle = 'rgba(160,200,180,0.7)';
+  ctx.fillText('0', pad.l - 14, Y(0) + 4);
+  ctx.fillText(maxY.toFixed(1), pad.l - 30, pad.t + 10);
+  ctx.fillText(`${maxT.toFixed(2)} s`, pad.l + W - 40, cv.height - 10);
+  ctx.fillStyle = 'rgba(108,200,255,0.9)';
+  ctx.fillText('tapped', X(tapped.landTime) + 4, Y(0) - 8);
+}
+
+/* ---- the playable strip ----
+   A real fixed-timestep loop with an accumulator, running the same numbers the
+   page exports. If the export is wrong, it is wrong here too and you can feel
+   it. */
+
+const play = $('play');
+const pctx = play.getContext('2d');
+const player = { x: 120, y: 0, vx: 0, vy: 0, grounded: true, coyote: 0, buffer: 0, holding: false, cutUsed: false };
+const input = { left: false, right: false, jump: false };
+let trail = [];
+let accumulator = 0;
+let lastFrame = performance.now();
+let cachedParams = params();
+
+function stepPlayer(p, dt) {
+  player.coyote = player.grounded ? state.coyote / 1000 : player.coyote - dt;
+  player.buffer -= dt;
+
+  /* Input first. The impulse has to land BEFORE the ground resolve at the
+     bottom of this function: at the instant of the jump the character is still
+     standing at y = 0, so a ground check that runs afterwards sees y <= 0,
+     zeroes the velocity it was just given, and the jump silently never
+     happens. */
+  if (player.buffer > 0 && player.coyote > 0) {
+    player.vy = p.v0;
+    player.buffer = 0;
+    player.coyote = 0;
+    player.grounded = false;
+    player.cutUsed = false;
+  }
+  /* The release cut is one event. Multiplying by it every frame the button is
+     up decays the rise geometrically, which is a different (and much weaker)
+     jump than the one the numbers describe. */
+  if (!player.holding && !player.cutUsed && player.vy > 0) {
+    player.vy *= p.cut;
+    player.cutUsed = true;
+  }
+
+  const g = player.vy > 0 ? p.gRise : p.gFall;
+  if (p.order === 'position') {
+    player.y += player.vy * dt;
+    player.vy -= g * dt;
+  } else {
+    player.vy -= g * dt;
+    player.y += player.vy * dt;
+  }
+  if (p.terminal > 0 && player.vy < -p.terminal) player.vy = -p.terminal;
+
+  player.vx = (input.right ? 1 : 0) * p.runSpeed - (input.left ? 1 : 0) * p.runSpeed;
+  player.x += player.vx * dt;
+
+  /* Only land when actually falling, for the same reason. */
+  if (player.y <= 0 && player.vy <= 0) { player.y = 0; player.vy = 0; player.grounded = true; }
+  else player.grounded = false;
+
+  const worldW = 14; /* metres shown */
+  if (player.x < 0.4) player.x = 0.4;
+  if (player.x > worldW - 0.4) player.x = worldW - 0.4;
+
+  if (state.trail && !player.grounded) trail.push({ x: player.x, y: player.y });
+  if (trail.length > 900) trail.splice(0, trail.length - 900);
+}
+
+function drawPlay(p) {
+  const W = play.width;
+  const H = play.height;
+  pctx.clearRect(0, 0, W, H);
+  pctx.fillStyle = '#04070a';
+  pctx.fillRect(0, 0, W, H);
+
+  const worldW = 14;
+  const groundY = H - 48;
+  const scale = W / worldW;
+  const yScale = Math.min(scale, (groundY - 30) / Math.max(1e-6, p.height * 1.7));
+  const SX = (x) => x * scale;
+  const SY = (y) => groundY - y * yScale;
+
+  pctx.strokeStyle = 'rgba(57,255,143,0.5)';
+  pctx.lineWidth = 2;
+  pctx.beginPath(); pctx.moveTo(0, groundY); pctx.lineTo(W, groundY); pctx.stroke();
+
+  /* the ledge, placed exactly one jump distance from the take-off mark */
+  const takeoff = 2.2;
+  const gap = Math.min(worldW - takeoff - 1.2, p.jumpDistance);
+  pctx.strokeStyle = 'rgba(255,145,48,0.55)';
+  pctx.setLineDash([3, 3]);
+  pctx.beginPath(); pctx.moveTo(SX(takeoff), groundY); pctx.lineTo(SX(takeoff), groundY - 26); pctx.stroke();
+  pctx.beginPath(); pctx.moveTo(SX(takeoff + gap), groundY); pctx.lineTo(SX(takeoff + gap), groundY - 26); pctx.stroke();
+  pctx.setLineDash([]);
+  pctx.fillStyle = 'rgba(255,145,48,0.9)';
+  pctx.font = '11px Consolas, monospace';
+  pctx.fillText(`${p.jumpDistance.toFixed(2)} ${U()}`, SX(takeoff) + 6, groundY - 30);
+
+  /* the target height */
+  pctx.strokeStyle = 'rgba(255,145,48,0.35)';
+  pctx.setLineDash([2, 5]);
+  pctx.beginPath(); pctx.moveTo(0, SY(p.height)); pctx.lineTo(W, SY(p.height)); pctx.stroke();
+  pctx.setLineDash([]);
+
+  if (state.trail) {
+    pctx.strokeStyle = 'rgba(108,200,255,0.55)';
+    pctx.lineWidth = 1.5;
+    pctx.beginPath();
+    trail.forEach((pt, i) => {
+      const x = SX(pt.x);
+      const y = SY(pt.y);
+      if (i === 0) pctx.moveTo(x, y); else pctx.lineTo(x, y);
+    });
+    pctx.stroke();
+  }
+
+  const px = SX(player.x);
+  const py = SY(player.y);
+  pctx.fillStyle = '#39ff8f';
+  pctx.fillRect(px - 11, py - 26, 22, 26);
+  pctx.fillStyle = '#04070a';
+  pctx.fillRect(px - 6, py - 20, 4, 5);
+  pctx.fillRect(px + 2, py - 20, 4, 5);
+
+  pctx.fillStyle = 'rgba(160,200,180,0.75)';
+  pctx.fillText(`height ${player.y.toFixed(2)}  v ${player.vy.toFixed(1)}  ${player.grounded ? 'grounded' : 'airborne'}`, 10, 18);
+}
+
+function frame(now) {
+  const dt = cachedParams.dt > 0 ? cachedParams.dt : 1 / 60;
+  accumulator += Math.min(0.25, (now - lastFrame) / 1000);
+  lastFrame = now;
+  let guard = 0;
+  while (accumulator >= dt && guard++ < 12) {
+    stepPlayer(cachedParams, dt);
+    accumulator -= dt;
+  }
+  drawPlay(cachedParams);
+  requestAnimationFrame(frame);
+}
+
+function pressJump() {
+  player.buffer = state.buffer / 1000;
+  player.holding = true;
+  player.cutUsed = false;
+}
+function releaseJump() { player.holding = false; }
+
+play.addEventListener('keydown', (ev) => {
+  if (ev.key === 'ArrowLeft' || ev.key === 'a' || ev.key === 'A') { input.left = true; ev.preventDefault(); }
+  if (ev.key === 'ArrowRight' || ev.key === 'd' || ev.key === 'D') { input.right = true; ev.preventDefault(); }
+  if (ev.key === ' ' || ev.key === 'ArrowUp' || ev.key === 'w' || ev.key === 'W') {
+    if (!ev.repeat) pressJump();
+    ev.preventDefault();
+  }
+});
+play.addEventListener('keyup', (ev) => {
+  if (ev.key === 'ArrowLeft' || ev.key === 'a' || ev.key === 'A') input.left = false;
+  if (ev.key === 'ArrowRight' || ev.key === 'd' || ev.key === 'D') input.right = false;
+  if (ev.key === ' ' || ev.key === 'ArrowUp' || ev.key === 'w' || ev.key === 'W') releaseJump();
+});
+play.addEventListener('pointerdown', () => play.focus());
+
+function holdButton(el, down, up) {
+  el.addEventListener('pointerdown', (ev) => { ev.preventDefault(); play.focus(); down(); });
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(type, up);
+}
+holdButton($('jump-btn'), pressJump, releaseJump);
+holdButton($('left-btn'), () => { input.left = true; }, () => { input.left = false; });
+holdButton($('right-btn'), () => { input.right = true; }, () => { input.right = false; });
+
+$('trail-btn').addEventListener('click', () => {
+  state.trail = !state.trail;
+  $('trail-btn').textContent = `Trail: ${state.trail ? 'on' : 'off'}`;
+  $('trail-btn').setAttribute('aria-pressed', String(state.trail));
+  if (!state.trail) trail = [];
+});
+
+/* ---- wiring ---- */
+
+function refresh() {
+  readState();
+  const p = params();
+  cachedParams = p;
+
+  const dt = p.dt;
+  $('warn-msg').classList.toggle('hidden', !(dt > 0 && state.apexTime <= dt * 2));
+  if (dt > 0 && state.apexTime <= dt * 2) {
+    $('warn-msg').textContent = `A ${state.apexTime.toFixed(3)}s rise is ${(state.apexTime / dt).toFixed(1)} steps at ${state.hz} Hz. Below about three steps the jump is a teleport and no gravity value can fix that — raise the time to apex or the tick rate.`;
+  }
+
+  $('fall-value').textContent = `${state.fallMultiplier.toFixed(2)}×`;
+  $('cut-value').textContent = state.cut.toFixed(2);
+  $('ppu-row').hidden = state.unit !== 'px';
+  document.querySelectorAll('.jt-unit').forEach((el) => { el.textContent = U(); });
+
+  refreshOutputs(p);
+  const sims = refreshProof(p);
+  drawArc(p, sims);
+
+  const naiveSim = simulateJump(p, { dt: dt > 0 ? dt : 1 / 600, v0: p.naive.v0, gRise: p.naive.gRise, gFall: p.naive.gRise * p.fallMultiplier });
+  $('code-out').textContent = engineCode($('engine-select').value, p, {
+    coyote: state.coyote, buffer: state.buffer, naiveApex: naiveSim.apex, ppu: state.ppu,
+  });
+}
+
+for (const id of ['height-input', 'apex-input', 'fall-input', 'speed-input', 'cut-input',
+                  'term-input', 'rate-select', 'order-select', 'unit-select', 'ppu-input',
+                  'coyote-input', 'buffer-input', 'engine-select']) {
+  $(id).addEventListener('input', refresh);
+  $(id).addEventListener('change', refresh);
+}
+
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1400);
+}
+$('copy-btn').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('code-out').textContent);
+    toast('Copied');
+  } catch (err) { toast('Clipboard blocked — select and copy'); }
+});
+
+window.__jump = {
+  solveJump, simulateJump, engineCode, risePeak,
+  set(opts) { Object.assign(state, opts); for (const [k, v] of Object.entries(opts)) {
+    const map = { height: 'height-input', apexTime: 'apex-input', fallMultiplier: 'fall-input',
+      runSpeed: 'speed-input', cut: 'cut-input', terminal: 'term-input', hz: 'rate-select',
+      order: 'order-select', unit: 'unit-select', coyote: 'coyote-input', buffer: 'buffer-input' };
+    if (map[k] && $(map[k])) $(map[k]).value = String(v);
+  } refresh(); return params(); },
+  get params() { return params(); },
+  get code() { return $('code-out').textContent; },
+  jump: () => { pressJump(); },
+  release: releaseJump,
+  get player() { return { ...player }; },
+};
+
+/* ---- boot ---- */
+refresh();
+requestAnimationFrame(frame);
+</script>
+<!-- Slippy Deck: floating Slippy TV + jukebox player. Renders nothing unless admin.slippylabs.com/whoami confirms a signed-in account. -->
+<script defer src="https://slippylabs.com/deck/deck.js"></script>
+<!-- Slippy Labs sitewide privacy link. Self-contained on purpose: these sites
+     share no CSS, so it carries its own styles and inherits the page's text
+     colour instead of assuming a palette. position/z-index are load bearing --
+     the HUD theme's .starfield/.scanlines are fixed at z-index 0-1 and would
+     paint straight over an unpositioned footer.
+     The .page-wrap trim below is what keeps the bar on the first screen. -->
+<div class="sl-legal"><a href="https://slippylabs.com/privacy.html">Privacy</a></div>
+<style>
+.sl-legal{box-sizing:border-box;position:relative;z-index:3;height:64px;display:flex;align-items:center;justify-content:center;margin:0;padding:0 12px;font-family:"Consolas","SFMono-Regular",Menlo,Monaco,"Courier New",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.5}
+.sl-legal a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px}
+.sl-legal a:hover,.sl-legal a:focus-visible{text-decoration:underline;opacity:1}
+/* This page centres .page-wrap at min-height:100vh, which would push the bar a
+   whole screen below the fold. Give back exactly the bar height instead of
+   adding a scrollbar to a page that had none. */
+.page-wrap{min-height:calc(100vh - 64px)}
+</style>
+</body>
+</html>
