@@ -715,6 +715,48 @@ let accumulator = 0;
 let lastFrame = performance.now();
 let cachedParams = params();
 
+/* ---- drawn BETWEEN steps ----
+   The accumulator above is right and the drawing was not. A fixed step and a
+   display refresh do not divide into each other, so the number of steps
+   between two drawn frames is 0, 1 or 2 -- and drawing `player.y` straight out
+   of the simulation draws that: a frame that is a duplicate of the one before
+   it, then one that moves twice as far.
+
+   It does not take a fast monitor here, because the step rate is a control on
+   this page. Modelled on a 60 Hz display: the 60 Hz default is clean, "Unity
+   default" (50 Hz) duplicates 17% of frames, and 30 Hz duplicates every other
+   one. The playable strip exists so a designer can feel the jump, and a 30 Hz
+   step drawn twice per step feels like the curve is wrong when it is the
+   drawing that is.
+
+   Swap-and-restore: the drawn position is written into `player`, drawPlay runs
+   unchanged, and the simulation values go back in a `finally` -- so nothing
+   can leak into the next step even if drawing throws. Same shape as
+   js/render/interp.js in the games, inlined because this tool is one file.
+   Only the player needs it: `trail` is a history of past steps, which is
+   already the right thing to draw. */
+let prevPose = null;
+
+/* A step longer than this is not motion, so it is drawn snapped rather than
+   slid. Derived from the page's OWN numbers and the chosen dt, because both
+   are the user's to set -- a fixed bar in metres would be wrong the moment
+   somebody picks 30 Hz or a 20 m/s run. */
+function snapBar(p, dt) {
+  return 3 * Math.max(p.runSpeed || 0, Math.abs(p.v0 || 0), p.terminal || 0) * dt;
+}
+
+function drawBlended(p, dt) {
+  const alpha = Math.min(1, Math.max(0, accumulator / dt));
+  if (!prevPose || alpha >= 1) { drawPlay(p); return; }
+  const dx = player.x - prevPose.x;
+  const dy = player.y - prevPose.y;
+  if (!(Math.hypot(dx, dy) <= snapBar(p, dt))) { drawPlay(p); return; }
+  const liveX = player.x, liveY = player.y;
+  player.x = prevPose.x + dx * alpha;
+  player.y = prevPose.y + dy * alpha;
+  try { drawPlay(p); } finally { player.x = liveX; player.y = liveY; }
+}
+
 function stepPlayer(p, dt) {
   player.coyote = player.grounded ? state.coyote / 1000 : player.coyote - dt;
   player.buffer -= dt;
@@ -830,10 +872,13 @@ function frame(now) {
   lastFrame = now;
   let guard = 0;
   while (accumulator >= dt && guard++ < 12) {
+    /* BEFORE the step, inside the loop: a frame that steps twice must leave
+       behind the pose from before the SECOND step. */
+    prevPose = { x: player.x, y: player.y };
     stepPlayer(cachedParams, dt);
     accumulator -= dt;
   }
-  drawPlay(cachedParams);
+  drawBlended(cachedParams, dt);
   requestAnimationFrame(frame);
 }
 
